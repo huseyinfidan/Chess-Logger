@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Logger | Satranç Maç Günlüğü</title>
+    <meta name="description" content="Satranç maçlarınızı, açılışlarınızı ve sonuçlarını kolayca kayıt altına alabileceğiniz premium bir uygulama.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- İkonlar için FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chessboard.js CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css" />
+    
+    <!-- jQuery (Chessboard.js gereksinimi) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <!-- Chessboard.js JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
+    
+    <!-- Chess.js JS (Satranç kuralları ve PGN ayrıştırıcı) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    
+    <!-- Chart.js Grafikler için -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="background-elements">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+    </div>
+
+    <div class="app-container">
+        <header class="glass-header">
+            <div class="logo">
+                <i class="fa-solid fa-chess-knight"></i>
+                <h1>Chess Logger</h1>
+            </div>
+            <nav>
+                <button id="nav-dashboard" class="nav-btn active">Dashboard</button>
+                <button id="nav-matches" class="nav-btn">Maçlar</button>
+                <button id="nav-openings" class="nav-btn">Açılışlar</button>
+                <a href="/api-docs" class="nav-btn doc-btn" target="_blank" title="API Dokümantasyonu">
+                    <i class="fa-solid fa-code"></i> API Docs
+                </a>
+            </nav>
+        </header>
+
+        <main class="glass-main">
+            <!-- Dashboard Bölümü -->
+            <section id="section-dashboard" class="section active">
+                <div class="section-header">
+                    <h2>Gösterge Paneli</h2>
+                    <button class="primary-btn" id="btn-print-report" title="Performans Raporunu Yazdır / PDF Al">
+                        <i class="fa-solid fa-file-pdf"></i> PDF Raporu Al
+                    </button>
+                </div>
+                
+                <div class="profile-card glass-card">
+                    <div class="profile-avatar">
+                        <i class="fa-solid fa-circle-user"></i>
+                    </div>
+                    <div class="profile-info">
+                        <div class="profile-header-row">
+                            <h3 id="profile-name">Hüseyin Fidan</h3>
+                            <button id="btn-edit-profile" class="edit-profile-btn" title="Profili Düzenle">
+                                <i class="fa-solid fa-pen-to-square"></i> Profili Düzenle
+                            </button>
+                        </div>
+                        <div class="profile-stats-row">
+                            <div class="profile-stat-item">
+                                <span class="profile-stat-label">Mevcut ELO</span>
+                                <span id="profile-current-elo" class="profile-stat-value">-</span>
+                            </div>
+                            <div class="profile-stat-item">
+                                <span class="profile-stat-label">Hedef ELO</span>
+                                <span id="profile-target-elo" class="profile-stat-value">1800</span>
+                            </div>
+                            <div class="profile-stat-item">
+                                <span class="profile-stat-label">Hedefe Kalan</span>
+                                <span id="profile-remaining-elo" class="profile-stat-value">-</span>
+                            </div>
+                        </div>
+                        <div class="elo-progress-container">
+                            <div class="elo-progress-label-row">
+                                <span>ELO Hedef İlerlemesi</span>
+                                <span id="elo-progress-percent">0%</span>
+                            </div>
+                            <div class="elo-progress-bar-bg">
+                                <div id="elo-progress-bar-fill" class="elo-progress-bar-fill" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Toplam Maç</h3>
+                        <p id="stat-total-matches">-</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Galibiyet Oranı</h3>
+                        <p id="stat-win-rate">-%</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Beyaz Başarısı</h3>
+                        <p id="stat-white-performance">-%</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Siyah Başarısı</h3>
+                        <p id="stat-black-performance">-%</p>
+                    </div>
+                </div>
+
+                <div class="charts-container">
+                    <!-- Geniş ELO Gelişim Grafiği -->
+                    <div class="chart-box full-width">
+                        <h4><i class="fa-solid fa-chart-line"></i> ELO Puan Gelişimi (Rating Progression)</h4>
+                        <div class="chart-wrapper rating-chart-wrapper">
+                            <canvas id="ratingChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="chart-box">
+                        <h4>Genel Maç Sonuçları</h4>
+                        <div class="chart-wrapper">
+                            <canvas id="resultsChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-box">
+                        <h4>Renk Bazlı Dağılım</h4>
+                        <div class="chart-wrapper">
+                            <canvas id="colorChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="opening-analytics">
+                    <div class="opening-analytics-box">
+                        <h4><i class="fa-solid fa-fire"></i> En Sık Tercih Edilen Rotalar</h4>
+                        <ul id="most-played-openings" class="analytics-list">
+                            <li>Veri yükleniyor...</li>
+                        </ul>
+                    </div>
+                    <div class="opening-analytics-box">
+                        <h4><i class="fa-solid fa-trophy"></i> Galibiyet Oranı En Yüksek Rotalar</h4>
+                        <ul id="best-winrate-openings" class="analytics-list">
+                            <li>Veri yükleniyor...</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Maçlar Bölümü -->
+            <section id="section-matches" class="section hidden">
+                <div class="section-header">
+                    <h2>Maç Geçmişi</h2>
+                    <button class="primary-btn" id="btn-add-match">
+                        <i class="fa-solid fa-plus"></i> Yeni Maç Ekle
+                    </button>
+                </div>
+
+                <!-- Gelişmiş Arama ve Filtreleme + Import/Export Barı -->
+                <div class="filter-bar">
+                    <div class="search-input-wrapper">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="filter-search" placeholder="Rakip adına göre ara...">
+                    </div>
+                    <div class="filter-selects">
+                        <select id="filter-result">
+                            <option value="">Tüm Sonuçlar</option>
+                            <option value="Galibiyet">Galibiyet</option>
+                            <option value="Beraberlik">Beraberlik</option>
+                            <option value="Mağlubiyet">Mağlubiyet</option>
+                        </select>
+                        <select id="filter-color">
+                            <option value="">Tüm Renkler</option>
+                            <option value="Beyaz">Beyaz</option>
+                            <option value="Siyah">Siyah</option>
+                        </select>
+                        <select id="filter-opening">
+                            <option value="">Tüm Açılışlar</option>
+                        </select>
+                    </div>
+                    <div class="filter-dates">
+                        <div class="date-group">
+                            <label for="filter-start-date">Başlangıç:</label>
+                            <input type="date" id="filter-start-date">
+                        </div>
+                        <div class="date-group">
+                            <label for="filter-end-date">Bitiş:</label>
+                            <input type="date" id="filter-end-date">
+                        </div>
+                        <button class="action-btn-secondary reset-filter-btn" id="btn-reset-filters" title="Filtreleri Sıfırla">
+                            <i class="fa-solid fa-rotate-left"></i>
+                        </button>
+                    </div>
+                    <div class="data-actions">
+                        <button class="action-btn-secondary" id="btn-export-csv" title="Excel / CSV Olarak İndir">
+                            <i class="fa-solid fa-file-csv"></i> CSV
+                        </button>
+                        <button class="action-btn-secondary" id="btn-export-json" title="JSON Olarak Dışa Aktar">
+                            <i class="fa-solid fa-download"></i> Dışa Aktar
+                        </button>
+                        <button class="action-btn-secondary" id="btn-import-trigger" title="JSON Yedek Dosyasını Geri Yükle">
+                            <i class="fa-solid fa-upload"></i> İçe Aktar
+                        </button>
+                        <input type="file" id="import-file" accept=".json" class="hidden-input">
+                    </div>
+                </div>
+                
+                <!-- Maç Ekleme/Düzenleme Formu (Gizli) -->
+                <div id="match-form-container" class="form-container hidden">
+                    <h3 id="match-form-title">Yeni Maç Ekle</h3>
+                    <form id="match-form">
+                        <input type="hidden" id="match-id">
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="opponent">Rakip Adı</label>
+                                <input type="text" id="opponent" required placeholder="Örn: Magnus Carlsen">
+                            </div>
+                            <div class="form-group">
+                                <label for="playerRating">Kendi ELO Puanınız (İsteğe Bağlı)</label>
+                                <input type="number" id="playerRating" placeholder="Örn: 1500" min="100" max="4000">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="playedAs">Renk</label>
+                                <select id="playedAs" required>
+                                    <option value="" disabled selected>Seçiniz...</option>
+                                    <option value="Beyaz">Beyaz</option>
+                                    <option value="Siyah">Siyah</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="result">Sonuç</label>
+                                <select id="result" required>
+                                    <option value="" disabled selected>Seçiniz...</option>
+                                    <option value="Galibiyet">Galibiyet</option>
+                                    <option value="Beraberlik">Beraberlik</option>
+                                    <option value="Mağlubiyet">Mağlubiyet</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="opening">Açılış</label>
+                                <select id="opening" required>
+                                    <option value="" disabled selected>Yükleniyor...</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="matchDate">Tarih</label>
+                                <input type="date" id="matchDate" required>
+                            </div>
+                        </div>
+
+                        <!-- Notlar ve PGN Girişi -->
+                        <div class="form-group">
+                            <label for="matchNotes">Maç Notları / Analiz</label>
+                            <textarea id="matchNotes" rows="3" placeholder="Maçtaki kritik anlar, önemli analizler, kaçırdığınız taktikler..."></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="matchPgn">PGN Hamle Kaydı (Görsel Tahta Oynatıcısı İçin)</label>
+                            <textarea id="matchPgn" rows="2" placeholder="Örn: 1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6..."></textarea>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" class="secondary-btn" id="btn-cancel-match">İptal</button>
+                            <button type="submit" class="primary-btn">Kaydet</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="table-responsive">
+                    <table id="matches-table">
+                        <thead>
+                            <tr>
+                                <th>Tarih</th>
+                                <th>Rakip</th>
+                                <th>Renk</th>
+                                <th>Açılış</th>
+                                <th>Sonuç</th>
+                                <th>İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody id="matches-tbody">
+                            <!-- JS ile doldurulacak -->
+                            <tr><td colspan="6" class="text-center">Yükleniyor...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Açılışlar Bölümü -->
+            <section id="section-openings" class="section hidden">
+                <div class="section-header">
+                    <h2>Satranç Açılışları</h2>
+                    <button class="primary-btn" id="btn-add-opening">
+                        <i class="fa-solid fa-plus"></i> Yeni Açılış Ekle
+                    </button>
+                </div>
+
+                <!-- Açılış Ekleme Formu (Gizli) -->
+                <div id="opening-form-container" class="form-container hidden">
+                    <h3>Yeni Açılış Ekle</h3>
+                    <form id="opening-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="openingName">Açılış Adı</label>
+                                <input type="text" id="openingName" required placeholder="Örn: Şah Gambiti">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="openingType">Tür</label>
+                                <select id="openingType" required>
+                                    <option value="" disabled selected>Seçiniz...</option>
+                                    <option value="Açık">Açık</option>
+                                    <option value="Yarı Açık">Yarı Açık</option>
+                                    <option value="Kapalı">Kapalı</option>
+                                    <option value="Yarı Kapalı">Yarı Kapalı</option>
+                                    <option value="Flank">Flank (Kanat)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" class="secondary-btn" id="btn-cancel-opening">İptal</button>
+                            <button type="submit" class="primary-btn">Kaydet</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="table-responsive">
+                    <table id="openings-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Açılış Adı</th>
+                                <th>Türü</th>
+                                <th>İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody id="openings-tbody">
+                            <!-- JS ile doldurulacak -->
+                            <tr><td colspan="4" class="text-center">Yükleniyor...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Detay Görünüm Modalı -->
+    <div id="details-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Maç Detay Analizi</h3>
+                <button id="btn-close-modal" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-body-grid">
+                    <!-- Sol Taraf: Bilgiler ve Notlar -->
+                    <div class="modal-info-side">
+                        <div class="modal-info-grid">
+                            <div class="modal-info-card">
+                                <label>Rakip Oyuncu</label>
+                                <p id="modal-opponent">-</p>
+                            </div>
+                            <div class="modal-info-card">
+                                <label>Tarih</label>
+                                <p id="modal-date">-</p>
+                            </div>
+                            <div class="modal-info-card">
+                                <label>Renk</label>
+                                <p id="modal-color">-</p>
+                            </div>
+                            <div class="modal-info-card">
+                                <label>Kullanılan Açılış</label>
+                                <p id="modal-opening">-</p>
+                            </div>
+                            <div class="modal-info-card">
+                                <label>Kendi ELO Puanınız</label>
+                                <p id="modal-player-rating">-</p>
+                            </div>
+                            <div class="modal-info-card">
+                                <label>Karşılaşma Sonucu</label>
+                                <span id="modal-result" class="result-badge">-</span>
+                            </div>
+                        </div>
+
+                        <div class="modal-notes-section">
+                            <h4><i class="fa-solid fa-pen-to-square"></i> Oyun Notları / Analiz</h4>
+                            <div id="modal-notes" class="modal-text-area">Not bulunmuyor.</div>
+                        </div>
+                    </div>
+
+                    <!-- Sağ Taraf: İnteraktif Görsel Satranç Tahtası -->
+                    <div class="modal-board-side">
+                        <h4><i class="fa-solid fa-chess-board"></i> PGN Oynatıcı</h4>
+                        <div class="board-container">
+                            <div id="board" style="width: 240px; margin: 0 auto;"></div>
+                            <div class="board-controls">
+                                <button id="btn-board-start" title="Başlangıç Konumu"><i class="fa-solid fa-angles-left"></i></button>
+                                <button id="btn-board-prev" title="Geri"><i class="fa-solid fa-angle-left"></i></button>
+                                <button id="btn-board-next" title="İleri"><i class="fa-solid fa-angle-right"></i></button>
+                                <button id="btn-board-end" title="Son Konum"><i class="fa-solid fa-angles-right"></i></button>
+                            </div>
+                            <div class="move-indicator">
+                                Hamle: <span id="current-move-num">0</span> / <span id="total-moves-num">0</span>
+                            </div>
+                            <div id="pgn-move-text" class="move-text-display">Hamleler yükleniyor...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-pgn-section">
+                    <h4><i class="fa-solid fa-code"></i> Orijinal PGN Hamle Listesi</h4>
+                    <pre id="modal-pgn" class="modal-text-area pgn-box">Hamle kaydı bulunmuyor.</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profil Düzenleme Modalı -->
+    <div id="profile-modal" class="modal hidden">
+        <div class="modal-content profile-modal-content">
+            <div class="modal-header">
+                <h3>Oyuncu Profilini Düzenle</h3>
+                <button id="btn-close-profile-modal" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="profile-form">
+                    <div class="form-group">
+                        <label for="edit-profile-name">Oyuncu Adı Soyadı</label>
+                        <input type="text" id="edit-profile-name" required placeholder="Örn: Hüseyin Fidan">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-target-elo">Hedef ELO Derecesi</label>
+                        <input type="number" id="edit-target-elo" required placeholder="Örn: 1800" min="500" max="4000">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="secondary-btn" id="btn-cancel-profile">İptal</button>
+                        <button type="submit" class="primary-btn">Değişiklikleri Kaydet</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="toast hidden">
+        <i id="toast-icon" class="fa-solid"></i>
+        <span id="toast-message"></span>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
